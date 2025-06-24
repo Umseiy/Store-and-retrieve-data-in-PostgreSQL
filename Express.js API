@@ -1,0 +1,189 @@
+project-folder/
+│
+├── node_modules/
+├── index.js
+├── package.json
+└── README.md
+
+
+---
+
+✅ Full Setup Guide
+
+1. Initialize Node.js Project
+
+mkdir project-folder
+cd project-folder
+npm init -y
+
+2. Install Dependencies
+
+npm install express pg body-parser
+
+express for the server
+
+pg for PostgreSQL connection
+
+body-parser to parse incoming request bodies
+
+
+
+---
+
+3. Create PostgreSQL Database and Table
+
+-- Connect to PostgreSQL and run:
+CREATE DATABASE testdb;
+
+-- Connect to testdb and create a table:
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100)
+);
+
+
+---
+
+4. Build Express Server with PostgreSQL Connection
+
+index.js
+
+const express = require('express');
+const bodyParser = require('body-parser');
+const { Pool } = require('pg');
+
+const app = express();
+const port = 3000;
+
+// PostgreSQL connection
+const pool = new Pool({
+    user: 'your_db_user',
+    host: 'localhost',
+    database: 'testdb',
+    password: 'your_db_password',
+    port: 5432,
+});
+
+app.use(bodyParser.json());
+
+// Basic route
+app.get('/', (req, res) => {
+    res.send('Welcome to the Express.js PostgreSQL API!');
+});
+
+// CREATE
+app.post('/users', async (req, res) => {
+    const { name, email } = req.body;
+    try {
+        const result = await pool.query('INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *', [name, email]);
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error creating user' });
+    }
+});
+
+// READ ALL
+app.get('/users', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM users');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error fetching users' });
+    }
+});
+
+// READ ONE
+app.get('/users/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error fetching user' });
+    }
+});
+
+// UPDATE
+app.put('/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, email } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING *',
+            [name, email, id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error updating user' });
+    }
+});
+
+// DELETE
+app.delete('/users/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ message: 'User deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error deleting user' });
+    }
+});
+
+// Start server
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+});
+
+
+---
+
+5. Run the Server
+
+node index.js
+
+
+---
+
+6. Testing with Postman
+
+✅ Example Endpoints:
+
+GET all users: GET http://localhost:3000/users
+
+GET user by ID: GET http://localhost:3000/users/1
+
+POST new user: POST http://localhost:3000/users
+
+
+{
+    "name": "Hauwa Salihu Ahmad",
+    "email": "hauwasalihuahmad@gmail.com"
+}
+
+PUT update user: PUT http://localhost:3000/users/1
+
+
+{
+    "name": "Hauwa Salihu Ahmad",
+    "email": "hauwasalihuahmad@gmail.com"
+}
+
+DELETE user: DELETE http://localhost:3000/users/1
+
+
+
